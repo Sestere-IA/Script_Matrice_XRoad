@@ -1,13 +1,37 @@
+"""
+run :
+- pyinstaller --noconfirm --onefile --windowed  "C:/Users/alexa/PycharmProjects/Script_Matrice_XRoad/main.py"
+to create new exe
+or use auto-py-to-exe
+
+"""
 import os
 from datetime import datetime
 import shutil
 from zipfile import ZipFile
+from tkinter import messagebox
 
 dirname = os.path.join(os.path.expanduser('~'), "AppData\Local\XRoad\Saved\Demos")
 
 
-def remove_replay_less_1min():  # TODO
-    pass
+def remove_replay_less_1min(dirname):
+    for i, replayfile in enumerate(os.listdir(dirname)):
+        filename, file_extension = os.path.splitext(replayfile)
+        if file_extension == ".replay":
+            complete_path = os.path.join(dirname, replayfile)
+            print(complete_path)
+            with open(complete_path, "rb") as file:
+                magic_number = (hex(int.from_bytes(file.read(4), "little")))
+                version = (hex(int.from_bytes(file.read(4), "little")))
+                taille_milli_sec = (int.from_bytes(file.read(4), "little"))
+                net_version = (hex(int.from_bytes(file.read(4), "little")))
+                change_list = (hex(int.from_bytes(file.read(4), "little")))
+                time_min = (taille_milli_sec / (1000 * 60)) % 60
+            if time_min < 1:
+                print("file to del")
+                os.remove(complete_path)
+            else:
+                print("file to keep")
 
 
 def create_1dir_per_day(dirname):
@@ -95,20 +119,24 @@ def zip_manipulation(dirname, list_of_zip_to_open):
         print(file)
         if os.path.join(dirname, file).endswith(".zip") and file in list_of_zip_to_open:
             with ZipFile(os.path.join(dirname, file)) as current_zip_open:
-                current_zip_open.extractall(dirname+"/tochange")
-            for file_to_change in os.listdir(dirname+"/tochange"):
+                current_zip_open.extractall(dirname + "/tochange")
+            for file_to_change in os.listdir(dirname + "/tochange"):
                 try:
-                    shutil.move(dirname+"/tochange/"+file_to_change, dirname+ "/" + file[:-4])
+                    shutil.move(dirname + "/tochange/" + file_to_change, dirname + "/" + file[:-4])
                 except shutil.Error:
                     # Same day so merge
-                    for dir_to_need_to_go_to_futur_folder_zip in os.listdir(dirname+"/tochange"):
-                        for file_to_need_to_go_to_futur_folder_zip in os.listdir(dirname+"/tochange/" + dir_to_need_to_go_to_futur_folder_zip):
-                            shutil.move(dirname+"/tochange/" + dir_to_need_to_go_to_futur_folder_zip + "/" + file_to_need_to_go_to_futur_folder_zip, dirname+ "/" + file[:-4] + "/" + file_to_change)
+                    for dir_to_need_to_go_to_futur_folder_zip in os.listdir(dirname + "/tochange"):
+                        for file_to_need_to_go_to_futur_folder_zip in os.listdir(
+                                dirname + "/tochange/" + dir_to_need_to_go_to_futur_folder_zip):
+                            shutil.move(
+                                dirname + "/tochange/" + dir_to_need_to_go_to_futur_folder_zip + "/" + file_to_need_to_go_to_futur_folder_zip,
+                                dirname + "/" + file[:-4] + "/" + file_to_change)
 
             os.remove(os.path.join(dirname, file))
-            shutil.rmtree(dirname+"/tochange")
+            shutil.rmtree(dirname + "/tochange")
             shutil.make_archive(os.path.join(dirname, file[:-4]), "zip", os.path.join(dirname, file[:-4]))
             # FileNotFoundError: [WinError 2] Le fichier spécifié est introuvable: 'C:\\Users\\alexa\\AppData\\Local\\XRoad\\Saved\\Demos\\2022-4.zip'
+
 
 def remove_old_dir(dirname):
     for file in os.listdir(dirname):
@@ -121,9 +149,10 @@ def send_to_nass():  # TODO
 
 
 if __name__ == '__main__':
-    remove_replay_less_1min()
+    remove_replay_less_1min(dirname)
     create_1dir_per_day(dirname)
     createall_dir_per_month(dirname)
     zip_all_dir(dirname)
     remove_old_dir(dirname)
     send_to_nass()
+    messagebox.showinfo("XR_Replay_Sorted", "All .replay file are sorted")
